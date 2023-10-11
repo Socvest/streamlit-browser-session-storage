@@ -1,0 +1,1 @@
+recursive-include streamlit_session_browser_storage/frontend/build *
