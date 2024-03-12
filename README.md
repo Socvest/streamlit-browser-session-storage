@@ -14,8 +14,6 @@ pip install streamlit-browser-session-storage
 
 ```
 from streamlit_session_browser_storage import SessionStorage
-import SessionStorage
-
 sessionBrowserS = SessionStorage()
 ```
 
