@@ -1,10 +1,12 @@
 import os
-from typing import Literal, Optional, Union
+import ast
+import time
+from typing import Literal, Optional, Union, Any, Dict
 import streamlit as st
 import streamlit.components.v1 as components
 
-_RELEASE = True
-
+_RELEASE = True    
+ 
 if not _RELEASE:
     _st_session_browser_storage = components.declare_component(
 
@@ -24,8 +26,27 @@ class SessionStorage:
     Component to help manager sessionBrowser storage for streamlit apps
     """
 
-    def __init__(self):
-        self.sessionBrowserStorageManager = _st_session_browser_storage
+    def __init__(self, key="storage_init"):
+
+        self.storedKey = key
+        if key not in st.session_state:
+            self.storedItems:Dict[str, Any] = _st_session_browser_storage(method="getAll", key=key, default={}) 
+            while st.session_state[key] is None:
+                time.sleep(0.1) 
+        else:
+            self.storedItems:Dict[str, Any] = st.session_state[key]
+
+            st.session_state[key] = self.storedItems
+        
+    
+    def refreshItems(self):
+        """
+            Get all items stored in local storage. Re-store items from browser local storage to session state
+        """
+        self.storedItems: Dict[str, Any] = _st_session_browser_storage(method="getAll", key=self.storedKey, default={}) 
+        while st.session_state[self.storedKey] is None:
+            time.sleep(0.1) 
+
             
     def setItem(self, itemKey:str=None, itemValue:Union[str, int, float, bool]=None, key:str="set", default=None):
         """
@@ -39,13 +60,12 @@ class SessionStorage:
         if (itemKey is None or itemKey == "") or (itemValue is None or itemValue == ""):
             return
         
-        try:
-            self.sessionBrowserStorageManager(method="setItem", itemKey=itemKey, itemValue=itemValue, key=key, default=default)
-            return True
-        except:
-            return False   
+        _st_session_browser_storage(method="setItem", itemKey=itemKey, itemValue=itemValue, key=key, default=default)
+
+        self.storedItems[itemKey] = itemValue
+           
         
-    def deleteItem(self, itemKey:str, key:str="deleteItem", default=None): 
+    def deleteItem(self, itemKey:str, key:str="delete", default=None): 
         """
         Delete individual item from sessionBrowser storage
 
@@ -57,9 +77,13 @@ class SessionStorage:
         if itemKey is None or itemKey == "":
             return
         
-        self.sessionBrowserStorageManager(method="deleteItem", itemKey=itemKey, key=key, default=default) 
+        _st_session_browser_storage(method="deleteItem", itemKey=itemKey, key=key, default=default) 
         
-        return True
+        if itemKey not in self.storedItems: 
+            return
+        else:
+            self.storedItems.pop(itemKey) 
+        
     
     def eraseItem(self, itemKey:str, key:str="eraseItem", default=None):
         """
@@ -72,10 +96,10 @@ class SessionStorage:
         if itemKey is None or itemKey == "":
             return
         
-        self.sessionBrowserStorageManager(method="eraseItem", itemKey=itemKey, key=key, default=default) 
+        _st_session_browser_storage(method="eraseItem", itemKey=itemKey, key=key, default=default) 
 
     
-    def getItem(self, itemKey:str=None, key:str="get", default=None):
+    def getItem(self, itemKey:str=None):
         """
         Get individual items stored in sessionBrowser storage.
 
@@ -83,13 +107,11 @@ class SessionStorage:
             itemKey: name of item to get from sessionBrowser storage
         """
 
-        if itemKey is None or itemKey == "":
-            return
+        if itemKey not in self.storedItems:
+            return 
+        return self.storedItems.get(itemKey)
         
-        saved_key = self.sessionBrowserStorageManager(method="getItem", itemKey=itemKey, key=key, default=default) 
-        return saved_key
-        
-    def getAll(self, key:str="getAll"):
+    def getAll(self):
         """
         Get all items saved on sessionBrowser storage.
 
@@ -97,10 +119,9 @@ class SessionStorage:
             key: unique identifier for the function/method in case you wish to execute it again somewhere else in the app.
         """
 
-        saved_key = self.sessionBrowserStorageManager(method="getAll", key=key)
-        return saved_key
+        return self.storedItems
         
-    def deleteAll(self, key:str="deleteAll"):
+    def deleteAll(self, key:str="delete_all"):
         """
         Delete all items you saved on sessionBrowser storage
 
@@ -108,7 +129,10 @@ class SessionStorage:
             key: unique identifier for the function/method in case you wish to execute it again somewhere else in the app.
         """
 
-        self.sessionBrowserStorageManager(method="deleteAll", key=key) 
+        _st_session_browser_storage(method="deleteAll", key=key) 
+
+        self.storedItems.clear() 
+
 
        
         
